@@ -4,6 +4,7 @@ import numpy as np
 from tensorflow.keras.models import model_from_json
 from PIL import Image
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
 
 # About Section
@@ -61,7 +62,31 @@ def detect_emotion(frame, face_cascade, model, emotion_list):
         cv2.putText(frame, pred, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
     return frame, emotions_detected
+class EmotionDetector(VideoTransformerBase):
+    def __init__(self):
+        self.face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+        self.model = load_model()
+        self.emotion_list = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
+    def transform(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+
+        gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray_image, 1.3, 5)
+
+        for (x, y, w, h) in faces:
+            face = gray_image[y:y+h, x:x+w]
+            roi = cv2.resize(face, (48, 48))
+            roi = roi[np.newaxis, :, :, np.newaxis]
+
+            pred = self.emotion_list[np.argmax(self.model.predict(roi))]
+
+            cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.putText(img, pred, (x, y-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1,
+                        (0, 255, 0), 2, cv2.LINE_AA)
+
+        return img
 # Main Streamlit App
 def main():
     st.title("Emotion Detector")
@@ -76,30 +101,12 @@ def main():
     option = st.sidebar.radio("Select mode:", ("Webcam", "Upload Image"))
 
     if option == "Webcam":
-        # Webcam logic
-        run_video = st.checkbox("Run Webcam")
-        st.info("Check the box to start webcam detection.")
+    st.info("Click 'Start' to use your webcam")
 
-        if run_video:
-            # Start video capture
-            cap = cv2.VideoCapture(0)
-            stframe = st.empty()
-
-            while run_video:
-                ret, frame = cap.read()
-                if not ret:
-                    st.warning("Webcam not detected. Please check your device.")
-                    break
-
-                # Detect emotion and annotate frame
-                annotated_frame, detected_emotions = detect_emotion(frame, face_cascade, model, emotion_list)
-
-                # Display the video frame
-                frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-                stframe.image(frame_rgb, channels="RGB")
-
-            # Release the video capture when done
-            cap.release()
+    webrtc_streamer(
+        key="emotion-detection",
+        video_transformer_factory=EmotionDetector
+    )
 
     elif option == "Upload Image":
         # Image upload logic
