@@ -101,12 +101,12 @@ def main():
     option = st.sidebar.radio("Select mode:", ("Webcam", "Upload Image"))
 
     if option == "Webcam":
-    st.info("Click 'Start' to use your webcam")
-
-    webrtc_streamer(
-        key="emotion-detection",
-        video_transformer_factory=EmotionDetector
-    )
+        st.info("Click 'Start' to use your webcam")
+    
+        webrtc_streamer(
+            key="emotion-detection",
+            video_transformer_factory=EmotionDetector
+        )
 
     elif option == "Upload Image":
         # Image upload logic
