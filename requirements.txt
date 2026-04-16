@@ -1,6 +1,6 @@
 opencv-python
 opencv-python-headless
-tensorflow
+tensorflow==2.15.0
 Pillow
 streamlit
 streamlit-webrtc
